@@ -29,12 +29,12 @@ jobs:
               exit 1
             fi
             
-      # build and push Docker image
+      # build and push Docker image TAG="circleci-$CIRCLE_BUILD_NUM"
       - run: 
           name: build and push Docker image
           command: |            
             # Use a dynamic tag, e.g., commit SHA or CircleCI build number
-            export TAG="circleci-$CIRCLE_BUILD_NUM"
+            export TAG="3.0"
             
             # Build the Docker image
             echo "Building image with tag: $TAG"
