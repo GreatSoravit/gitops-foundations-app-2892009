@@ -18,12 +18,24 @@ jobs:
           paths:
             - target/
       - setup_remote_docker #version: 19.03.13
+
+      # Diagnostic step: Print Docker Hub username to verify it's set
+      - run:
+          name: Verify DockerHub Username
+          command: |
+            echo "DOCKERHUB_USERNAME is: ${DOCKERHUB_USERNAME}"
+            if [ -z "$DOCKERHUB_USERNAME" ]; then
+              echo "Error: DOCKERHUB_USERNAME is empty. Please set it in CircleCI environment variables."
+              exit 1
+            fi
             
       # build and push Docker image
       - run: 
           name: build and push Docker image
           command: |
-            TAG=3.0
+            # Use a dynamic tag, e.g., commit SHA or CircleCI build number
+            export TAG="circleci-$CIRCLE_BUILD_NUM"
+            echo "Building image with tag: $TAG"
             docker build -t $DOCKERHUB_USERNAME/gitops-foundations:$TAG --build-arg JAR_FILE=*.jar .
             echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
             docker push $DOCKERHUB_USERNAME/gitops-foundations:$TAG
