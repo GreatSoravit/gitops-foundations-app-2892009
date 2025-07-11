@@ -1,4 +1,7 @@
 version: 2.1
+# Include Kubernetes orb definition
+orbs:
+  kubernetes: circleci/kubernetes@2.0.0 # Use a specific, stable version like @1.2.0 or @2.0.0
 
 jobs:
   build:
@@ -11,20 +14,97 @@ jobs:
       - checkout
       - run: ./mvnw -Dmaven.test.skip=true clean package
       - persist_to_workspace:
-         root: ./
-         paths:
-           - target/
+          root: ./
+          paths:
+            - target/
       - setup_remote_docker:
           version: 19.03.13
 
       # build and push Docker image
-      - run: |
-          TAG=3.0
-          docker build -t $DOCKERHUB_USERNAME/gitops-foundations:$TAG --build-arg JAR_FILE=*.jar .
-          echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
-          docker push $DOCKERHUB_USERNAME/gitops-foundations:$TAG
+      - run:
+          name: Build and Push Docker Image
+          command: |
+            # Use a dynamic tag, e.g., commit SHA or CircleCI build number
+            # For simplicity, let's use the CircleCI build number as the tag
+            # This ensures a unique image for each successful build
+            export IMAGE_TAG="circleci-$CIRCLE_BUILD_NUM"
+            echo "Building image with tag: $IMAGE_TAG"
+            docker build -t $DOCKERHUB_USERNAME/gitops-foundations:$IMAGE_TAG --build-arg JAR_FILE=*.jar .
+            echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            docker push $DOCKERHUB_USERNAME/gitops-foundations:$IMAGE_TAG
+            echo "export IMAGE_TAG=$IMAGE_TAG" >> $BASH_ENV # Make tag available to subsequent jobs
+
+  deploy:
+    docker:
+      - image: cimg/base:current # A base image with Git and common tools like `sed`
+    steps:
+      - checkout
+      - run:
+          name: Configure Git User
+          command: |
+            git config user.email "circleci@example.com" # Use a dedicated email for CI commits
+            git config user.name "CircleCI Bot"
+
+      - run:
+          name: Load Image Tag from Build Job
+          command: |
+            source $BASH_ENV # Load the IMAGE_TAG exported from the build job
+            echo "Image tag for deployment: $IMAGE_TAG"
+
+      - run:
+          name: Update Kubernetes Manifest and Add CircleCI Tracking
+          command: |
+            # Define your Kubernetes manifest file path
+            # IMPORTANT: Adjust this path to where your deployment.yaml is located in your Git repo
+            K8S_MANIFEST_PATH="argo/deployment.yaml" 
+
+            # Define your CircleCI Project ID (replace with your actual ID)
+            # You should set this as a CircleCI Environment Variable, e.g., CIRCLECI_PROJECT_ID
+            # For testing, you can hardcode it here, but env var is better.
+            export CIRCLECI_PROJECT_ID="${CIRCLECI_PROJECT_ID}" # Ensure this env var is set in CircleCI
+
+            # Use sed to update the image tag in your deployment.yaml
+            # This assumes your deployment.yaml has the image defined like:
+            # image: soravitwetprasit/gitops-foundations:some-old-tag
+            # It will replace `image: soravitwetprasit/gitops-foundations:.*` with the new tag
+            sed -i "s|image: $DOCKERHUB_USERNAME/gitops-foundations:.*|image: $DOCKERHUB_USERNAME/gitops-foundations:$IMAGE_TAG|" "$K8S_MANIFEST_PATH"
+
+            # Add CircleCI deployment tracking annotations and labels
+            # Ensure these are added correctly to the `metadata` and `spec.template.metadata` sections
+            # This uses `yq` (a YAML processor) which you might need to install in the Docker image
+            # For simplicity, let's use `sed` for annotations and labels if yq is not available
+            # If your YAML structure is complex, consider `yq` or a dedicated templating tool.
+
+            # Add annotation to Deployment metadata
+            # This is a simplified `sed` approach; assumes `annotations:` line exists or will be added.
+            # For more robust YAML manipulation, consider `yq` (e.g., `yq e '.metadata.annotations."circleci.com/project-id" = env(CIRCLECI_PROJECT_ID)' -i "$K8S_MANIFEST_PATH"`)
+            sed -i "/^metadata:/a\  annotations:\n    [circleci.com/project-id](https://circleci.com/project-id): \"$CIRCLECI_PROJECT_ID\"" "$K8S_MANIFEST_PATH"
+
+            # Add labels to Deployment metadata
+            sed -i "/^metadata:/a\  labels:\n    [circleci.com/component-name](https://circleci.com/component-name): gitops-foundations\n    [circleci.com/version](https://circleci.com/version): $IMAGE_TAG" "$K8S_MANIFEST_PATH"
+
+            # Add labels to Pod Template metadata
+            sed -i "/^  template:\n    metadata:/a\      labels:\n        [circleci.com/component-name](https://circleci.com/component-name): gitops-foundations\n        [circleci.com/version](https://circleci.com/version): $IMAGE_TAG" "$K8S_MANIFEST_PATH"
+
+            echo "Updated manifest content:"
+            cat "$K8S_MANIFEST_PATH"
+
+      - run:
+          name: Commit and Push Changes to Git
+          command: |
+            git add "$K8S_MANIFEST_PATH"
+            git commit -m "CircleCI: Deploy gitops-foundations with image $IMAGE_TAG [skip ci]" # [skip ci] prevents infinite loop
+            # Use the GIT_TOKEN environment variable for authentication
+            git push "https://$GIT_USERNAME:$GIT_TOKEN@github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git" HEAD:main # Adjust to your repo and branch
+
 workflows:
   main:
     jobs:
       - build:
           context: DockerHub
+      - deploy:
+          requires:
+            - build # Ensure deploy runs only after build is successful
+          context: # Add contexts needed for Git push and CircleCI Project ID
+            - DockerHub # If DOCKERHUB_USERNAME/PASSWORD are needed here (unlikely for deploy job)
+            - GitOps # A new context for GIT_USERNAME, GIT_TOKEN, CIRCLECI_PROJECT_ID
