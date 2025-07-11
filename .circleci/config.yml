@@ -19,7 +19,18 @@ jobs:
             - target/
       - setup_remote_docker:
           version: 19.03.13
-
+      - run:
+          name: Generate deployment config and deploy
+          command: |
+          # replace variable placeholders with envsubst
+          envsubst < argo/deployment.yaml > src/
+          argo/deployment-rendered.yaml
+          # install kubectl
+          - kubernetes/install-kubectl
+          # deploy rendered manifest
+          - kubernetes/create-or-update-resource:
+            resource-file-path: argo/deployment-rendered.yaml
+            resource-name: deployment/my-app-deployment
       # build and push Docker image
       - run:
           name: Build and Push Docker Image
