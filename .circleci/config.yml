@@ -22,7 +22,7 @@ jobs:
       - run:
           name: Render deployment.yaml using envsubst
           command: |
-            envsubst < src/manifests/deployment.yaml > argo/deployment.yaml
+            envsubst < argo/deployment.yaml > argo/deployment.yaml
             
       - run:
           name: Configure Git User
