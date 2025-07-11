@@ -35,10 +35,19 @@ jobs:
           command: |            
             # Use a dynamic tag, e.g., commit SHA or CircleCI build number
             export TAG="circleci-$CIRCLE_BUILD_NUM"
+            
+            # Build the Docker image
             echo "Building image with tag: $TAG"
             docker build -t $DOCKERHUB_USERNAME/gitops-foundations:$TAG --build-arg JAR_FILE=*.jar .
+
+            # Log in to Docker Hub
             echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
+            
+            # Push the Docker image to Docker Hub
             docker push $DOCKERHUB_USERNAME/gitops-foundations:$TAG
+            
+            # Export the TAG to a specific file that will be persisted
+            echo "export TAG=$TAG" > .bash_env_export # Write to a file in the workspace root
             
   deploy:
     docker:
@@ -73,8 +82,11 @@ jobs:
       - run:
           name: Load Image Tag from Build Job
           command: |
-            source $BASH_ENV # Load the IMAGE_TAG exported from the build job
+            # Source the persisted file to load TAG
+            source .bash_env_export
             echo "Image tag for deployment: $TAG"
+            # Ensure CIRCLECI_PROJECT_ID is available as an environment variable
+            export CIRCLECI_PROJECT_ID="${CIRCLECI_PROJECT_ID}" # Set this in CircleCI Context/Env Vars
             
 workflows:
   main:
