@@ -44,52 +44,25 @@ jobs:
     docker:
       - image: cimg/base:current # A base image with Git and common tools like `sed`
     steps:
-      - checkout # This step is correctly indented
-      # Checkout the manifests repository into a separate directory
-      - run: # Corrected indentation for this step
+      - checkout
+      - run:
           name: Configure Git User
           command: |
             git config user.email "circleci@example.com" # Use a dedicated email for CI commits
             git config user.name "CircleCI Bot"
-
-       - run:
-          name: Checkout Manifests Repository
-          command: |
-            # Ensure GIT_USERNAME and GIT_TOKEN are available in a CircleCI Context (e.g., 'GitOps')
-            git clone "https://$GIT_USERNAME:$GIT_TOKEN@github.com/GreatSoravit/gitops-foundations-env-2892009.git" manifests-repo
-            echo "Manifests repository cloned into: $(pwd)/manifests-repo"
-
+            
       - run:
           name: Render deployment.yaml using envsubst
           command: |
-            # Create the output directory within the cloned repo if it doesn't exist
-            mkdir -p manifests-repo/argo
+            envsubst < argo/deployment.yaml > argo/deployment.yaml
             
-            # Use envsubst to replace variables and output to a new file
-            envsubst < manifests-repo/argo/deployment.yaml > manifests-repo/argo/deployment-rendered.yaml
-            echo "--- Rendered deployment.yaml ---"
-            cat manifests-repo/argo/deployment-rendered.yaml
-            echo "------------------------------"
-
       - run:
           name: Load Image Tag from Build Job
           command: |
             source $BASH_ENV # Load the IMAGE_TAG exported from the build job
             echo "Image tag for deployment: $IMAGE_TAG"
-
-      # Install kubectl using the Kubernetes Orb
-      - kubernetes/install-kubectl:
-          version: 1.36.0 # Specify a kubectl version compatible with your Minikube
-
-      # Deploy the rendered manifest directly to Kubernetes
-      - kubernetes/create-or-update-resource:
-          resource-file-path: manifests-repo/argo/deployment-rendered.yaml # Path now refers to the cloned repo
-          resource-name: deployment/gitops-foundations # Use your deployment name
-          # You might need to configure kubectl context for Minikube here.
-          # This typically involves setting KUBECONFIG or using the Kubernetes orb's authentication.
-          # For Minikube, you might need to use a self-hosted runner or expose Minikube.
-          # This part is complex for a remote CircleCI job to Minikube.
-
+            K8S_MANIFEST_PATH="argo/deployment.yaml" 
+            
 workflows:
   main:
     jobs:
