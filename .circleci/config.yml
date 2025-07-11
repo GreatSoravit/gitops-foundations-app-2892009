@@ -18,11 +18,6 @@ jobs:
           paths:
             - target/
       - setup_remote_docker #version: 19.03.13
-
-      - run:
-          name: Render deployment.yaml using envsubst
-          command: |
-            envsubst < argo/deployment.yaml > argo/deployment.yaml
             
       - run:
           name: Configure Git User
@@ -48,7 +43,11 @@ jobs:
       - image: cimg/base:current # A base image with Git and common tools like `sed`
     steps:
       - checkout
-      
+      - run:
+          name: Render deployment.yaml using envsubst
+          command: |
+            envsubst < argo/deployment.yaml > argo/deployment.yaml
+            
       - run:
           name: Load Image Tag from Build Job
           command: |
