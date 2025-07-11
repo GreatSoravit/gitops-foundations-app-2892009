@@ -75,7 +75,6 @@ jobs:
           command: |
             source $BASH_ENV # Load the IMAGE_TAG exported from the build job
             echo "Image tag for deployment: $IMAGE_TAG"
-            K8S_MANIFEST_PATH="argo/deployment.yaml" 
 
       # Install kubectl using the Kubernetes Orb
       - kubernetes/install-kubectl:
