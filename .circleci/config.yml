@@ -78,16 +78,7 @@ jobs:
             envsubst < manifests-repo/argo/deployment.yaml > manifests-repo/argo/deployment-rendered.yaml
             echo "--- Rendered deployment.yaml ---"
             cat manifests-repo/argo/deployment-rendered.yaml
-            echo "------------------------------"
-            
-      - run:
-          name: Load Image Tag from Build Job
-          command: |
-            # Source the persisted file to load IMAGE_TAG from the attached workspace
-            source /tmp/workspace/.bash_env_export
-            echo "Image tag for deployment: $TAG"
-            # Ensure CIRCLECI_PROJECT_ID is available as an environment variable
-            export CIRCLECI_PROJECT_ID="${CIRCLECI_PROJECT_ID}" # Set this in CircleCI Context/Env Vars
+            echo "------------------------------"        
             
 workflows:
   main:
