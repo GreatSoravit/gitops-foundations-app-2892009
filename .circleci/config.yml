@@ -54,7 +54,12 @@ jobs:
       - run:
           name: Render deployment.yaml using envsubst
           command: |
+            # Create the directory if it doesn't exist
+            mkdir -p argo
             envsubst < argo/deployment.yaml > argo/deployment.yaml
+            echo "--- Rendered deployment.yaml ---"
+            cat argo/deployment-rendered.yaml
+            echo "------------------------------"
             
       - run:
           name: Load Image Tag from Build Job
