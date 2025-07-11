@@ -74,7 +74,7 @@ jobs:
           name: Load Image Tag from Build Job
           command: |
             source $BASH_ENV # Load the IMAGE_TAG exported from the build job
-            echo "Image tag for deployment: $IMAGE_TAG"
+            echo "Image tag for deployment: $TAG"
             
 workflows:
   main:
