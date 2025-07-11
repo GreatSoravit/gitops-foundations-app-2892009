@@ -17,7 +17,7 @@ jobs:
           root: ./
           paths:
             - target/
-      - setup_remote_docker: #version: 19.03.13
+      - setup_remote_docker #version: 19.03.13
 
       - run:
           name: Render deployment.yaml using envsubst
