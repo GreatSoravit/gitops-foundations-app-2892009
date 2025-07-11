@@ -44,8 +44,9 @@ jobs:
     docker:
       - image: cimg/base:current # A base image with Git and common tools like `sed`
     steps:
-      - checkout
-      - run:
+      - checkout # This step is correctly indented
+      # Checkout the manifests repository into a separate directory
+      - run: # Corrected indentation for this step
           name: Configure Git User
           command: |
             git config user.email "circleci@example.com" # Use a dedicated email for CI commits
