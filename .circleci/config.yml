@@ -33,13 +33,17 @@ jobs:
       - run: 
           name: build and push Docker image
           command: |
+            # Trim whitespace from environment variables
+            export DOCKERHUB_USERNAME=$(echo "$DOCKERHUB_USERNAME" | xargs)
+            export DOCKERHUB_PASSWORD=$(echo "$DOCKERHUB_PASSWORD" | xargs)
+            
             # Use a dynamic tag, e.g., commit SHA or CircleCI build number
-            export TAG="circleci-$CIRCLE_BUILD_NUM"
-            echo "Building image with tag: $TAG"
-            docker build -t $DOCKERHUB_USERNAME/gitops-foundations:$TAG --build-arg JAR_FILE=*.jar .
-            echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
-            docker push $DOCKERHUB_USERNAME/gitops-foundations:$TAG
-            echo "export IMAGE_TAG=$TAG" >> $BASH_ENV # Make tag available to subsequent jobs    
+            export IMAGE_TAG="circleci-$CIRCLE_BUILD_NUM"
+            echo "Building image with tag: $IMAGE_TAG"
+            docker build -t "$DOCKERHUB_USERNAME/gitops-foundations:$IMAGE_TAG" --build-arg JAR_FILE=*.jar .
+            echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            docker push "$DOCKERHUB_USERNAME/gitops-foundations:$IMAGE_TAG"
+            echo "export IMAGE_TAG=$IMAGE_TAG" >> $BASH_ENV # Make tag available to subsequent jobs
             
   deploy:
     docker:
