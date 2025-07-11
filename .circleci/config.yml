@@ -19,15 +19,6 @@ jobs:
             - target/
       - setup_remote_docker #version: 19.03.13
             
-      - run:
-          name: Configure Git User
-          command: |
-            git config user.email "circleci@example.com" # Use a dedicated email for CI commits
-            git config user.name "CircleCI Bot"
-            git add argo/deployment.yaml
-            git commit -m "Update deployment [skip ci]" || echo "No changes"
-            git push origin main
-            
       # build and push Docker image
       - run: 
           name: build and push Docker image
@@ -43,6 +34,12 @@ jobs:
       - image: cimg/base:current # A base image with Git and common tools like `sed`
     steps:
       - checkout
+      - run:
+          name: Configure Git User
+          command: |
+            git config user.email "circleci@example.com" # Use a dedicated email for CI commits
+            git config user.name "CircleCI Bot"
+            
       - run:
           name: Render deployment.yaml using envsubst
           command: |
